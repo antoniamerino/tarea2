@@ -14,8 +14,10 @@ const MapComponent = () => {
     initializeMap().then(map => {
       if (map) {
         fetchStationsAndLines(map).then(() => {
-          // Conectar el WebSocket solo después de que todo esté cargado
-          setupWebSocket(map);
+          fetchInitialTrainData(map).then(() => {
+            // Conectar el WebSocket solo después de que todo esté cargado
+            setupWebSocket(map);
+          });
         });
       }
     });
@@ -54,9 +56,9 @@ const MapComponent = () => {
       stationDict[key] = station.position;
       const customIcon = L.icon({
         iconUrl: iconUrl,
-        iconSize: [15, 25],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34]
+        iconSize: [10, 15],
+        iconAnchor: [10, 10],
+        popupAnchor: [1, -10]
       });
 
       const marker = L.marker([station.position.lat, station.position.long], { icon: customIcon }).addTo(map);
@@ -72,6 +74,33 @@ const MapComponent = () => {
         return [stationDict[key].lat, stationDict[key].long];
       });
       L.polyline(lineCoordinates, { color: line.color }).addTo(map);
+    });
+  };
+
+  const fetchInitialTrainData = async (map) => {
+    const response = await fetch('https://tarea-2.2024-1.tallerdeintegracion.cl/api/metro/trains');
+    const trains = await response.json();
+
+    trains.forEach(train => {
+      const initialPosition = { lat: -33.45, lng: -70.65 }; // Posición inicial para todos los trenes
+      const trainIcon = L.icon({
+        iconUrl: iconTrain,
+        iconSize: [20, 30],
+        iconAnchor: [10, 15]
+      });
+      const marker = L.marker(initialPosition, { icon: trainIcon }).addTo(map);
+      marker.bindPopup(
+        `Train ID: ${train.train_id}<br>` +
+        `Linea: ${train.line_id}<br>` +
+        `Conductor: ${train.driver_name}<br>` +
+        `Origen: ${train.origin_station_id}<br>` +
+        `Destino: ${train.destination_station_id}`
+      );
+
+      setTrainData(prevData => ({
+        ...prevData,
+        [train.train_id]: { ...train, marker }
+      }));
     });
   };
 
@@ -99,26 +128,13 @@ const MapComponent = () => {
 
   const handlePositionEvent = (data, map) => {
     const { train_id, position } = data.data;
-  
+
     setTrainData(prevData => {
       const train = prevData[train_id];
       if (train && train.marker) {
-        // Si el marcador del tren ya existe, actualiza su posición
         train.marker.setLatLng([position.lat, position.long]);
-      } else {
-        // Si no existe, crea un nuevo marcador
-        const trainIcon = L.icon({
-          iconUrl: iconTrain,
-          iconSize: [20, 30],
-          iconAnchor: [10, 15]
-        });
-        const marker = L.marker([position.lat, position.long], { icon: trainIcon }).addTo(map);
-        marker.bindPopup(`Train ID: ${train_id}`);
-        
-        // Actualiza el estado con el nuevo marcador
-        prevData[train_id] = { ...data.data, marker };
       }
-      return { ...prevData };
+      return prevData;
     });
   };
   
