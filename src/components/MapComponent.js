@@ -3,7 +3,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import iconUrl from '../red.png'; // Verifica que la ruta al icono es correcta
 import WebSocketService from '../WebSocketService';
-import iconTrain from '../icon-station.png';
+import iconTrain from '../trenNegro.png';
+import iconStopped from '../trenAmarillo.png';
+import iconDeparting from '../trenVerde.png';
+import iconTraveling from '../trenNegro.png';
+import iconArrived from '../trenRojo.png';
 
 const MapComponent = () => {
   const mapRef = useRef({ leafletElement: null }); // Ref para mantener la referencia al mapa
@@ -15,8 +19,10 @@ const MapComponent = () => {
       if (map) {
         fetchStationsAndLines(map).then(() => {
           fetchInitialTrainData(map).then(() => {
-            // Conectar el WebSocket solo después de que todo esté cargado
             setupWebSocket(map);
+            setInterval(() => {
+              checkTrainStatus(map); // Regularmente verifica el estado de los trenes
+            }, 10000); // Cada 10 segundos
           });
         });
       }
@@ -99,17 +105,44 @@ const MapComponent = () => {
 
       setTrainData(prevData => ({
         ...prevData,
-        [train.train_id]: { ...train, marker }
+        [train.train_id]: {
+          ...train,
+          marker,
+          positions: [] // Inicializar el arreglo de posiciones vacio
+        }
       }));
     });
   };
+
+  const checkTrainStatus = async (map) => {
+    const response = await fetch('https://tarea-2.2024-1.tallerdeintegracion.cl/api/metro/trains');
+    const activeTrains = await response.json();
+    const activeTrainIds = new Set(activeTrains.map(train => train.train_id));
+  
+    setTrainData(prevData => {
+      Object.keys(prevData).forEach(trainId => {
+        if (!activeTrainIds.has(trainId)) {
+          // Eliminar el tren si ya no está activo
+          if (prevData[trainId].path) {
+            prevData[trainId].path.remove(); // Elimina la línea del mapa
+          }
+          if (prevData[trainId].marker) {
+            prevData[trainId].marker.remove(); // Elimina el marcador del mapa
+          }
+          delete prevData[trainId]; // Elimina el tren de los datos
+        }
+      });
+      return { ...prevData };
+    });
+  };
+  
 
   const setupWebSocket = (map) => {
     WebSocketService.connect(
       "wss://tarea-2.2024-1.tallerdeintegracion.cl/connect",
       {
         position: data => handlePositionEvent(data, map),
-        status: data => console.log(`Status: ${data.data.status}`),
+        status: data => handleStatusEvent(data, map),
         arrival: data => console.log(`Arrival: ${data.data}`),
         departure: data => console.log(`Departure: ${data.data}`)
       },
@@ -131,16 +164,70 @@ const MapComponent = () => {
 
     setTrainData(prevData => {
       const train = prevData[train_id];
-      if (train && train.marker) {
+      if (train) {
+        if (!train.positions.length) { // Solo añadir la línea cuando se recibe la primera posición
+          train.positions.push([position.lat, position.long]);
+          train.path = L.polyline(train.positions, {
+            color: 'black',
+            dashArray: '5, 10' // Estilo punteado
+          }).addTo(map);
+        } else {
+          train.positions.push([position.lat, position.long]);
+          train.path.setLatLngs(train.positions);
+        }
         train.marker.setLatLng([position.lat, position.long]);
       }
-      return prevData;
+      return { ...prevData };
     });
   };
-  
+
+  const handleStatusEvent = (data, map) => {
+    const { train_id, status } = data.data;
+
+    setTrainData(prevData => {
+      const train = prevData[train_id];
+      if (train) {
+        let iconUrl;
+        switch (status) {
+          case 'stopped':
+            iconUrl = iconStopped;
+            break;
+          case 'departing':
+            iconUrl = iconDeparting;
+            break;
+          case 'traveling':
+            iconUrl = iconTraveling;
+            break;
+          case 'arrived':
+            iconUrl = iconArrived;
+            break;
+          default:
+            iconUrl = iconTrain; // Default to the original icon if status is unknown
+        }
+        const newIcon = L.icon({
+          iconUrl,
+          iconSize: [20, 30],
+          iconAnchor: [10, 15]
+        });
+        train.marker.setIcon(newIcon);
+        train.marker.bindPopup(
+          `Train ID: ${train.train_id}<br>` +
+          `Status: ${status}<br>` +
+          `Line: ${train.line_id}<br>` +
+          `Driver: ${train.driver_name}<br>` +
+          `Origin: ${train.origin_station_id}<br>` +
+          `Destination: ${train.destination_station_id}`
+        );
+      }
+      return { ...prevData };
+    });
+  };
 
   const cleanupMap = () => {
-    Object.values(trainData).forEach(train => train.marker.remove());
+    Object.values(trainData).forEach(train => {
+      if (train.path) train.path.remove();
+      train.marker.remove();
+    });
     if (mapRef.current && mapRef.current.leafletElement) {
       mapRef.current.leafletElement.remove();
       mapRef.current.leafletElement = null;
