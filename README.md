@@ -1,70 +1,30 @@
-# Getting Started with Create React App
+# MetraPI - Visualización en Tiempo Real del Metro de Santiago
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Descripción del Proyecto
+MetraPI es una aplicación web desarrollada para visualizar en tiempo real la información del metro de Santiago, Chile. Utiliza WebSockets para recibir y mostrar datos en tiempo real sobre la posición de los trenes, las estaciones, y las líneas del metro. Adicionalmente, incluye un sistema de chat que permite a los usuarios enviar y recibir mensajes en tiempo real.
 
-## Available Scripts
+## Tecnologías Utilizadas
+- **React**: Utilizado para construir la interfaz de usuario.
+- **Leaflet**: Librería de mapas interactivos.
+- **Bootstrap**: Utilizado para estilizar y organizar los componentes de la interfaz gráfica.
+- **WebSocket API**: Para la comunicación en tiempo real con el servidor y recibir eventos del metro.
 
-In the project directory, you can run:
+## Funcionalidades
+- **Visualización de Mapas**: Muestra las estaciones de metro y las rutas utilizando diferentes colores para cada línea.
+- **Actualización en Tiempo Real**: Los trenes se actualizan en el mapa conforme se reciben datos nuevos a través de eventos WebSocket. Los estados de los trenes se pueden visualizar con cambios de colores de los iconos de los trenes. 
+- **Chat en Tiempo Real**: Permite a los usuarios comunicarse entre sí y recibir mensajes automáticos relacionados con los eventos del metro.
+- **Tablas Informativas**: Se presentan tablas que muestran información detallada sobre las estaciones y los trenes, incluyendo datos como nombre de estación, ID, línea, estado actual del tren, chofer, origen y destino.
 
-### `npm start`
+## Bibliografía y Recursos
+- Íconos del metro utilizados bajo licencia de Flaticon: [Logotipo del metro de Santiago](https://www.flaticon.es/icono-gratis/logotipo-del-metro-de-santiago_50835)
+- Otros íconos de metro obtenidos de Iconos8: [Iconos de trenes](https://iconos8.es/icons/set/metro)
+- Tutoriales y ejemplos sobre proyectos similares:
+  - [Tutorial de YouTube sobre mapas](https://www.youtube.com/watch?v=F8dnYNTncoU)
+  - [Repositorio de GitHub con ejemplos de aplicación de mapas](https://github.com/ruvictor/map-app-directions/tree/master)
+- **ChatGPT de OpenAI**: Asistencia en la estructura del código, resolución de dudas y diseño de la interfaz gráfica.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Uso
+Para iniciar el proyecto localmente, sigue estos pasos:
+1. Clona el repositorio.
+2. Instala las dependencias con `npm install`.
+3. Ejecuta el servidor local con `npm start`.

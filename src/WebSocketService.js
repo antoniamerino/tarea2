@@ -49,13 +49,18 @@ class WebSocketService {
   }
 
   sendMessage(message) {
+    console.log("Attempting to send message:", message);
     if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
-      this.websocket.send(JSON.stringify(message));
+      try {
+          this.websocket.send(JSON.stringify(message));
+          console.log("Message sent successfully:", message);
+      } catch (error) {
+          console.error("Send failed:", error);
+      }
     } else {
-      console.log("Cannot send message. WebSocket is not connected or not ready.");
+      console.log("Cannot send message. WebSocket is not connected or the connection is not ready.");
     }
   }
-
   close() {
     if (this.websocket !== null) {
       this.websocket.close();

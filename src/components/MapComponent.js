@@ -1,18 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import iconUrl from '../red.png'; // Verifica que la ruta al icono es correcta
+import iconUrl from '../red.png'; 
 import WebSocketService from '../WebSocketService';
 import iconTrain from '../trenNegro.png';
 import iconStopped from '../trenAmarillo.png';
 import iconDeparting from '../trenVerde.png';
 import iconTraveling from '../trenNegro.png';
 import iconArrived from '../trenRojo.png';
+import { Container, Row, Col, Table } from 'react-bootstrap';
+import ChatComponent from './ChatComponent';
 
 const MapComponent = () => {
-  const mapRef = useRef({ leafletElement: null }); // Ref para mantener la referencia al mapa
-  const [linesInfo, setLinesInfo] = useState([]); // Información sobre las líneas de metro
-  const [trainData, setTrainData] = useState({}); // Datos de los trenes
+  const mapRef = useRef({ leafletElement: null }); 
+  const [linesInfo, setLinesInfo] = useState([]); 
+  const [trainData, setTrainData] = useState({}); 
+  const [stations, setStations] = useState([]);
+  const [chatMessages, setChatMessages] = useState([]);
 
   useEffect(() => {
     initializeMap().then(map => {
@@ -21,7 +25,7 @@ const MapComponent = () => {
           fetchInitialTrainData(map).then(() => {
             setupWebSocket(map);
             setInterval(() => {
-              checkTrainStatus(map); // Regularmente verifica el estado de los trenes
+              checkTrainStatus(map); // Verifica el estado de los trenes
             }, 10000); // Cada 10 segundos
           });
         });
@@ -56,6 +60,7 @@ const MapComponent = () => {
   const fetchStationsAndLines = async (map) => {
     const stationsResponse = await fetch('https://tarea-2.2024-1.tallerdeintegracion.cl/api/metro/stations');
     const stations = await stationsResponse.json();
+    setStations(stations);
     const stationDict = {};
     stations.forEach(station => {
       const key = `${station.station_id}-${station.line_id}`;
@@ -88,7 +93,7 @@ const MapComponent = () => {
     const trains = await response.json();
 
     trains.forEach(train => {
-      const initialPosition = { lat: -33.45, lng: -70.65 }; // Posición inicial para todos los trenes
+      const initialPosition = { lat: -33.45, lng: -70.65 };
       const trainIcon = L.icon({
         iconUrl: iconTrain,
         iconSize: [20, 30],
@@ -108,7 +113,8 @@ const MapComponent = () => {
         [train.train_id]: {
           ...train,
           marker,
-          positions: [] // Inicializar el arreglo de posiciones vacio
+          positions: [], // Inicializar el arreglo de posiciones vacio
+          currentStation: null // Inicializar currentStation como null
         }
       }));
     });
@@ -136,15 +142,15 @@ const MapComponent = () => {
     });
   };
   
-
   const setupWebSocket = (map) => {
     WebSocketService.connect(
       "wss://tarea-2.2024-1.tallerdeintegracion.cl/connect",
       {
         position: data => handlePositionEvent(data, map),
         status: data => handleStatusEvent(data, map),
-        arrival: data => console.log(`Arrival: ${data.data}`),
-        departure: data => console.log(`Departure: ${data.data}`)
+        arrival: data => handleArrivalEvent(data, map),
+        departure: data => console.log(`Departure: ${data.data}`),
+        message: data => handleChatMessage(data)
       },
       error => console.error("WebSocket Error: ", error),
       () => console.log("WebSocket Connection Closed"),
@@ -165,11 +171,11 @@ const MapComponent = () => {
     setTrainData(prevData => {
       const train = prevData[train_id];
       if (train) {
-        if (!train.positions.length) { // Solo añadir la línea cuando se recibe la primera posición
+        if (!train.positions.length) { 
           train.positions.push([position.lat, position.long]);
           train.path = L.polyline(train.positions, {
             color: 'black',
-            dashArray: '5, 10' // Estilo punteado
+            dashArray: '5, 10' 
           }).addTo(map);
         } else {
           train.positions.push([position.lat, position.long]);
@@ -202,7 +208,7 @@ const MapComponent = () => {
             iconUrl = iconArrived;
             break;
           default:
-            iconUrl = iconTrain; // Default to the original icon if status is unknown
+            iconUrl = iconTrain;
         }
         const newIcon = L.icon({
           iconUrl,
@@ -223,6 +229,40 @@ const MapComponent = () => {
     });
   };
 
+  const handleArrivalEvent = (data, map) => {
+    const { train_id, station_id, line_id } = data.data;
+  
+    setTrainData(prevData => {
+      const train = prevData[train_id];
+      if (train) {
+        // Forma la clave única para la estación actual
+        const uniqueStationKey = `${station_id}-${line_id}`;
+        const updatedTrain = {
+          ...train,
+          currentStation: uniqueStationKey
+        };
+        return {
+          ...prevData,
+          [train_id]: updatedTrain
+        };
+      }
+      return prevData;
+    });
+  }; 
+  
+  const handleChatMessage = (data) => {
+    const { train_id, content, name } = data.data;
+    const message = {
+      sender: name,
+      content: content,
+      timestamp: new Date(data.timestamp),
+      trainId: train_id,
+      level: data.data.level
+    };
+  
+    setChatMessages(prevMessages => [...prevMessages, message]);
+  };
+  
   const cleanupMap = () => {
     Object.values(trainData).forEach(train => {
       if (train.path) train.path.remove();
@@ -235,19 +275,96 @@ const MapComponent = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <div ref={mapRef} style={{ height: '70%', width: '50%', marginLeft: '5vh' }} />
-      <div style={{ width: '50%', overflowY: 'auto', padding: '20px' }}>
-        <h1>Mapa y Datos</h1>
-        {linesInfo.map(line => (
-          <div key={line.line_id}>
-            <strong>Line {line.line_id}:</strong> Color {line.color}
-            <p>Stations: {line.station_ids.join(', ')}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+    <Container fluid className="p-0" style={{ height: '100vh' }}>
+  
+      <Row>
+        <Col md={8} className="p-0">
+          <div ref={mapRef} style={{ height: '55vh' }}>Map Here</div>
+        </Col>
+        <Col md={4} className="p-0" style={{ height: '55vh' }}> 
+          <ChatComponent messages={chatMessages} />
+        </Col>
+      </Row>
+
+  
+      <Row className="mt-3">
+        <Col md={4}>
+          <Table striped bordered hover responsive className="text-center">
+            <caption style={{ captionSide: 'top', fontWeight: 'bold', textAlign: 'center' }}>Estaciones</caption>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>ID</th>
+                <th>Línea</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stations.map(station => (
+                <tr key={`${station.station_id}-${station.line_id}`}>
+                  <td>{station.name}</td>
+                  <td>{station.station_id}</td>
+                  <td>{station.line_id}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Col>
+        <Col md={4}>
+          <Table striped bordered hover responsive className="text-center">
+            <caption style={{ captionSide: 'top', fontWeight: 'bold', textAlign: 'center' }}>Trenes</caption>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Chofer</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Estación actual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.values(trainData).map(train => (
+                <tr key={train.train_id}>
+                  <td>{train.train_id}</td>
+                  <td>{train.driver_name}</td>
+                  <td>{train.origin_station_id}</td>
+                  <td>{train.destination_station_id}</td>
+                  <td>{stations.find(s => `${s.station_id}-${s.line_id}` === train.currentStation)?.station_id || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Col>
+        <Col md={4}>
+          <Table bordered hover responsive className="text-center">
+            <caption style={{ captionSide: 'top', fontWeight: 'bold', textAlign: 'center' }}>Estado del Tren</caption>
+            <thead>
+              <tr>
+                <th>Estado</th>
+                <th>Icono</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Viajando</td>
+                <td><img src={iconTraveling} alt="Viajando" style={{ width: '50px' }} /></td>
+              </tr>
+              <tr>
+                <td>Llegado</td>
+                <td><img src={iconArrived} alt="Llegado" style={{ width: '50px' }} /></td>
+              </tr>
+              <tr>
+                <td>Saliendo</td>
+                <td><img src={iconDeparting} alt="Saliendo" style={{ width: '50px' }} /></td>
+              </tr>
+              <tr>
+                <td>Detenido</td>
+                <td><img src={iconStopped} alt="Detenido" style={{ width: '50px' }} /></td>
+              </tr>
+            </tbody>
+          </Table>
+        </Col>
+      </Row>
+    </Container>
   );
 };
-
 export default MapComponent;
